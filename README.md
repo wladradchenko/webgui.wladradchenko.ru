@@ -38,7 +38,7 @@ To run this application locally, follow these steps:
 
 1. Clone the repository:
 
-   ```bash
+   ```
    git clone https://github.com/wladradchenko/webgui.wladradchenko.ru.git
    cd webgui.wladradchenko.ru
    npm install
@@ -47,9 +47,7 @@ To run this application locally, follow these steps:
 
 2. Build WebGUI for your application:
 
-   ```bash
-   npm run dist
-   ```
+   Replace icons in `build` on your app icons, after `npm run dist`.
 
    For more information about building, refer to the [Electron build documentation](https://www.electron.build/multi-platform-build.html)
 
