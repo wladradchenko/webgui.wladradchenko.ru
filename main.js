@@ -8,6 +8,7 @@ function createWindow (url) {
   const mainWindow = new BrowserWindow({
     width: width,
     height: height,
+    title: 'WebGUI',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js')
     },
