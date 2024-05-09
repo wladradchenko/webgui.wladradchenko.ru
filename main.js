@@ -5,14 +5,23 @@ const path = require('node:path')
 function createWindow (url) {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  const options = {
+    backgroundColor: '#0d0d0d00',
     width: width,
     height: height,
     title: 'WebGUI',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
-    },
-  })
+      preload: path.join(__dirname, 'preload.js'),
+      nativeWindowOpen: true,
+      nodeIntegration: true
+    }
+  }
+
+  if (process.platform === "linux") {
+    options.icon = path.join(`${__dirname}/64x64.png`);
+  }
+  
+  const mainWindow = new BrowserWindow(options);
 
   // Hide the menu
   mainWindow.setMenu(null);
@@ -57,4 +66,3 @@ app.on('window-all-closed', function () {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
-
