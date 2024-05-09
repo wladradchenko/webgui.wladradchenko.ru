@@ -5,7 +5,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/wladradchenko/webgui.wladradchenko.ru">
-    <img src="build/icon.png" alt="Logo" width="100" height="100">
+    <img src="256x256.png" alt="Logo" width="100" height="100">
   </a>
 
   <h3 align="center">WebGUI</h3>
@@ -47,7 +47,7 @@ To run this application locally, follow these steps:
 
 2. Build WebGUI for your application:
 
-   Replace icons in `build` on your app icons, after `npm run dist`.
+   Replace icons in `.` on your app icons with keep name, after `npm run dist`.
 
    For more information about building, refer to the [Electron build documentation](https://www.electron.build/multi-platform-build.html)
 
