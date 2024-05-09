@@ -30,7 +30,7 @@
       "icon": "32x32.icns"
     },
     "win": {
-      "target": "nsis",
+      "target": "portable",
       "icon": "256x256.ico"
     },
     "linux": {
