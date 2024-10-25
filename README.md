@@ -44,6 +44,8 @@ To run this application locally, follow these steps:
    npm install
    npm start
    ```
+   
+P.S. You also can update version libs to last `npm update`.
 
 2. Build WebGUI for your application:
 
