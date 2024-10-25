@@ -10,13 +10,15 @@ function createWindow(url) {
     title: 'WebGUI',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      nativeWindowOpen: true,
+      nativeWindowOpen: false,
       nodeIntegration: true,
+      contextIsolation: true, // Enable context isolation
+      nodeIntegration: false,  // Disable Node.js integration
     },
   };
 
   if (process.platform === "linux") {
-    options.icon = path.join(`${__dirname}/256x256.png`); // 64x64.png for best look
+    options.icon = path.join(`${__dirname}/64x64.png`);
   }
 
   const mainWindow = new BrowserWindow(options);
@@ -52,7 +54,13 @@ function createWindow(url) {
 }
 
 // Set a very high memory limit
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=16384');
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=20480');
+// Disables
+app.disableHardwareAcceleration();  // Disable Hardware Acceleration
+app.commandLine.appendSwitch('disable-gpu-rasterization');
+//app.commandLine.appendSwitch('disable-extensions'); // Disable all extensions
+app.commandLine.appendSwitch('disable-software-rasterizer'); // Disable software rasterizer
+app.commandLine.appendSwitch('enable-logging'); // Enable logging for debugging
 
 app.whenReady().then(() => {
   const args = process.argv.slice(2);
