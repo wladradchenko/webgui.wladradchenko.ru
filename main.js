@@ -1,19 +1,26 @@
-const { app, screen, BrowserWindow } = require('electron');
-const path = require('node:path');
+const {
+  app,
+  screen,
+  BrowserWindow,
+  ipcMain,
+  Notification,
+  session,
+} = require("electron");
+const path = require("node:path");
 
 function createWindow(url) {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   const options = {
-    backgroundColor: '#0d0d0d00',
+    backgroundColor: "#0d0d0d00",
     width: width,
     height: height,
-    title: 'WebGUI',
+    title: "WebGUI",
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, "preload.js"),
       nativeWindowOpen: false,
       nodeIntegration: true,
-      contextIsolation: true, // Enable context isolation
-      nodeIntegration: false,  // Disable Node.js integration
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   };
 
@@ -23,67 +30,193 @@ function createWindow(url) {
 
   const mainWindow = new BrowserWindow(options);
 
-  // Hide the menu
   mainWindow.setMenu(null);
-
-  // Load a remote URL
   mainWindow.loadURL(url);
-
-  // Open the DevTools if needed
-  // mainWindow.webContents.openDevTools();
 
   // Debounce the resize event
   let resizeTimeout;
-  mainWindow.on('resize', () => {
+  mainWindow.on("resize", () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
-      mainWindow.webContents.send('resize'); // Send resize event to renderer process if needed
+      mainWindow.webContents.send("resize");
     }, 500);
   });
 
   // Memory management
   setInterval(() => {
     const memoryUsage = process.getProcessMemoryInfo();
-    if (memoryUsage.privateBytes > 150 * 1024 * 1024) { // Adjust the threshold as needed
-      console.log('Memory usage high, triggering garbage collection');
-      global.gc(); // Request garbage collection
+    if (memoryUsage.privateBytes > 150 * 1024 * 1024) {
+      console.log("Memory usage high, triggering garbage collection");
+      global.gc();
     }
-  }, 60000); // Check every minute
+  }, 60000);
+
+  // Download process monitoring
+  session.defaultSession.on("will-download", (event, item, webContents) => {
+    // Create a custom notification popup window
+    const notificationWindow = new BrowserWindow({
+      width: 350,
+      height: 100,
+      frame: false,
+      alwaysOnTop: true,
+      transparent: true,
+      x: Math.floor(width - 20), // Centered horizontally
+      y: 20, // At the top of the screen
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false,
+      },
+    });
+
+    notificationWindow.loadURL(
+      "data:text/html;charset=utf-8," +
+        encodeURIComponent(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body {
+            background-color: rgba(0, 0, 0, 0);
+            padding: 0;
+            height:100%;
+            width:100%;
+            overflow: hidden;
+            font-size: medium;
+            margin: 10px;
+            color: white;
+          }
+          .notification {
+            display:flex;
+            justify-content: space-between;
+            padding-left: 20px;
+            padding-right: 20px;
+            text-align: center;
+            background-color: #282828;
+            border:1px solid #4d4d4d;
+            align-items: center;
+            border-radius: 8px;
+            scale: .8;
+            font-weight: lighter;
+          }
+          button, input, optgroup, select, textarea {
+            font-family: inherit;
+            font-size: inherit;
+            font-weight: inherit;
+            margin: 0;
+            padding: 0;
+            border: none;
+            background: none;
+            text-align: inherit;
+          }
+          button {
+            color: black;
+            background-color:  #c8edd2;
+            border-radius: 8px;
+            padding-left: 15px;
+            padding-right: 15px;
+            padding-top: 5px;
+            padding-bottom: 5px;
+            font-weight: bold;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="notification">
+          <h3>Downloading: 0 Mb</h3>
+          <button class="cancel">Cancel</button>
+        </div>
+        <script>
+          const { ipcRenderer } = require('electron');
+          const cancelButton = document.querySelector('.cancel');
+          
+          cancelButton.addEventListener('click', () => {
+            ipcRenderer.send('cancel-download');
+          });
+          
+          ipcRenderer.on('update-download', (event, progress) => {
+            document.querySelector('h3').innerText = 'Downloading: ' + progress + ' Mb';
+          });
+        </script>
+      </body>
+      </html>
+    `)
+    );
+
+    let downloadStarted = false;
+    let progress = 0;
+
+    item.on("updated", (event, state) => {
+      if (state === "progressing") {
+        if (!downloadStarted) {
+          notificationWindow.show();
+          downloadStarted = true;
+        }
+        progress = Math.round(item.getReceivedBytes() / 1024 / 1024);
+        notificationWindow.webContents.send("update-download", progress);
+      }
+    });
+
+    item.on("done", (event, state) => {
+      if (state === "completed") {
+        notificationWindow.webContents.send(
+          "update-download",
+          "Download completed!"
+        );
+      } else {
+        notificationWindow.webContents.send(
+          "update-download",
+          "Download failed!"
+        );
+      }
+      notificationWindow.close();
+    });
+
+    ipcMain.on("cancel-download", () => {
+      item.cancel();
+      notificationWindow.webContents.send(
+        "update-download",
+        "Download canceled!"
+      );
+      notificationWindow.close();
+    });
+
+    item.setSavePath(path.join(app.getPath("downloads"), item.getFilename()));
+  });
 
   return mainWindow;
 }
 
 // Set a very high memory limit
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=20480');
+app.commandLine.appendSwitch("js-flags", "--max-old-space-size=20480");
 // Disables
-app.disableHardwareAcceleration();  // Disable Hardware Acceleration
-app.commandLine.appendSwitch('disable-gpu-rasterization');
+app.disableHardwareAcceleration(); // Disable Hardware Acceleration
+app.commandLine.appendSwitch("disable-gpu-rasterization");
 //app.commandLine.appendSwitch('disable-extensions'); // Disable all extensions
-app.commandLine.appendSwitch('disable-software-rasterizer'); // Disable software rasterizer
-app.commandLine.appendSwitch('enable-logging'); // Enable logging for debugging
+app.commandLine.appendSwitch("disable-software-rasterizer"); // Disable software rasterizer
+app.commandLine.appendSwitch("enable-logging"); // Enable logging for debugging
 
 app.whenReady().then(() => {
   const args = process.argv.slice(2);
-  let url = 'http://127.0.0.1:8000';
+  let url = "http:/127.0.0.1:48000";
 
   args.forEach((arg) => {
-    if (arg.startsWith('--app=')) {
-      url = arg.split('=')[1];
+    if (arg.startsWith("--app=")) {
+      url = arg.split("=")[1];
     }
   });
 
   createWindow(url);
 
-  app.on('activate', function () {
+  app.on("activate", function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(url);
   });
 });
 
-app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') app.quit();
+app.on("window-all-closed", function () {
+  if (process.platform !== "darwin") app.quit();
 });
 
 // Enable garbage collection (only in --inspect mode)
-if (process.argv.includes('--inspect')) {
+if (process.argv.includes("--inspect")) {
   global.gc();
 }
